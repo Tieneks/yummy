@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -93,11 +94,13 @@
             }
         }
 
+        function isCode(line) {
+            return line && line.indexOf("-") !== -1 && line.length === 9;
+        }
+
         document.getElementById("bandcamp").addEventListener("input", async function () {
             const bandcampText = this.value;
-            const codes = bandcampText.split("\n")
-                .map(code => code.trim())
-                .filter((code, idx, arr) => arr.indexOf(code) === idx && code && code.indexOf("-") !== -1 && code.length === 9);
+            const lines = bandcampText.split("\n").map(line => line.trim());
 
             const loader = document.querySelector(".loader");
             const validList = document.getElementById("valid-list");
@@ -110,13 +113,35 @@
             loader.style.display = "block";
 
             let validFound = false;
+            let codeCount = 0;
+            const seenCodes = new Set();
 
-            for (let i = 0; i < codes.length; i++) {
-                if (i > 0 && i % 10 === 0) {
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+
+                if (!isCode(line)) {
+                    // Non-code line: render as label or spacer
+                    const li = document.createElement("li");
+                    li.style.listStyle = "none";
+                    if (line === "") {
+                        li.innerHTML = "&nbsp;";
+                    } else {
+                        li.textContent = line;
+                        li.style.fontWeight = "bold";
+                    }
+                    validList.appendChild(li);
+                    continue;
+                }
+
+                if (seenCodes.has(line)) continue;
+                seenCodes.add(line);
+
+                codeCount++;
+                if (codeCount > 1 && codeCount % 10 === 1) {
                     await new Promise(res => setTimeout(res, 2000));
                 }
 
-                const result = await checkCode(codes[i]);
+                const result = await checkCode(line);
 
                 if (result && result.ok) {
                     validFound = true;
@@ -126,14 +151,14 @@
 
                     const li = document.createElement("li");
                     const a = document.createElement("a");
-                    a.href = `https://bandcamp.com/yum?code=${codes[i]}`;
-                    a.textContent = codes[i];
+                    a.href = `https://bandcamp.com/yum?code=${line}`;
+                    a.textContent = line;
                     li.appendChild(a);
                     validList.appendChild(li);
                 } else if (result && result.errors) {
-                    console.log(`Invalid or redeemed code: ${codes[i]}`);
+                    console.log(`Invalid or redeemed code: ${line}`);
                 } else {
-                    console.error(`Failed to process code: ${codes[i]}`);
+                    console.error(`Failed to process code: ${line}`);
                 }
             }
 
@@ -144,4 +169,5 @@
         });
     </script>
 </body>
+
 </html>
